@@ -12,6 +12,21 @@
             padding: 20px;
             text-align: center;
         }
+        .navbar {
+            background-color: #3498db;
+            overflow: hidden;
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #2980b9;
+        }
         .container {
             max-width: 800px;
             background: white;
@@ -70,6 +85,13 @@
     </style>
 </head>
 <body> 
+    <div class="navbar">
+        <a href="#home">Home</a>
+        <a href="#sales">Sales</a>
+        <a href="#reports">Reports</a>
+        <a href="#contact">Contact</a>
+    </div>
+
     <div class="container">
         <h2>🐝 PC BEE Sales Input System</h2>
         <div class="input-container">
@@ -91,12 +113,8 @@
         </div>
     </div>
     <p class="error" id="error-message"></p>
-    
-    
-    <!-- Add this div for dynamically generated daily sales tables -->
-    <div id="salesContainer"></div>
 
-</body>
+    <div id="salesContainer"></div>
 
     
     <script>
