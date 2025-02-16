@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PC BEE Sales Input System</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            margin: auto;
+        }
+        h2 {
+            color: #333;
+        }
+        .input-container input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .input-container button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .input-container button:hover {
+            background-color: #2980b9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .edit-btn {
+            background-color: #fdd835;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body> 
+    <div class="container">
+        <h2>🐝 PC BEE Sales Input System</h2>
+        <div class="input-container">
+            <input type="text" id="invoice" placeholder="Sales Invoice #">
+            <input type="date" id="date">
+            <input type="text" id="customer" placeholder="Customer's Name">
+            <input type="text" id="particulars" placeholder="Particulars">
+            <input type="number" id="sales" placeholder="Sales" oninput="calculateTotal()">
+            <input type="number" id="services" placeholder="Services" oninput="calculateTotal()">
+            <input type="number" id="total" placeholder="Total" readonly>
+            <select id="payment">
+                <option value="">Select Payment Mode</option>
+                <option value="Cash">Cash</option>
+                <option value="Gcash">Gcash</option>
+            </select>
+            <input type="text" id="remarks" placeholder="Remarks">
+            <button onclick="addSale()">Add Sale</button>
+            <button onclick="exportToCSV()">Export to CSV</button>
+        </div>
+    </div>
+    <p class="error" id="error-message"></p>
+    
+    
+    <!-- Add this div for dynamically generated daily sales tables -->
+    <div id="salesContainer"></div>
+
+</body>
+
+    
+    <script>
+document.addEventListener("DOMContentLoaded", loadSalesData);
+let editIndex = -1; // Stores the index of the sale being edited
+
+function checkPin() {
+            let pin = prompt("Enter PIN to access the system:");
+            if (pin !== "1234") {
+                alert("Incorrect PIN! Access Denied.");
+                document.body.innerHTML = "<h2>Access Denied</h2>";
+            }
+        }
+
+        checkPin();
+
+function formatCurrency(amount) {
+    return '₱' + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
+}
+
+document.getElementById("date").addEventListener("focus", function() {
+        this.showPicker();
+    });
+
+// Convert date to "Feb 3, 2025" format
+function formatDate(dateString) {
+    let options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+}
+
+function calculateTotal() {
+    let salesInput = document.getElementById('sales');
+    let servicesInput = document.getElementById('services');
+
+    let sales = parseFloat(salesInput.value) || 0;
+    let services = parseFloat(servicesInput.value) || 0;
+
+    if (sales > 0) {
+        servicesInput.value = ' '; // Clear services if sales is entered
+        servicesInput.disabled = false;
+    } else {
+        servicesInput.disabled = false;
+    }
+
+    if (services > 0) {
+        salesInput.value = ' '; // Clear sales if services is entered
+        salesInput.disabled = false;
+    } else {
+        salesInput.disabled = false;
+    }
+
+    document.getElementById('total').value = sales + services;
+}
+
+function addSale() {
+    let invoice = document.getElementById("invoice").value.trim();
+    let date = document.getElementById("date").value;
+    let customer = document.getElementById("customer").value.trim();
+    let particulars = document.getElementById("particulars").value.trim();
+    let sales = document.getElementById("sales").value.trim();
+    let services = document.getElementById("services").value.trim();
+    let total = document.getElementById("total").value.trim();
+    let payment = document.getElementById("payment").value;
+    let remarks = document.getElementById("remarks").value.trim();
+
+    // Convert empty sales/services to blank (instead of NaN)
+    sales = sales ? sales : "";
+    services = services ? services : "";
+
+    // Validation: Required fields
+    if (!date || !customer || !particulars || !total || !payment) {
+        alert("⚠️ Please fill out all required fields.");
+        return;
+    }
+
+    // Validation: Require remarks when Gcash is selected
+    if (payment === "Gcash" && !remarks) {
+        alert("⚠️ Please enter remarks when selecting Gcash as payment.");
+        return;
+    }
+
+    let salesData = { invoice, date, customer, particulars, sales, services, total, payment, remarks };
+    let salesList = JSON.parse(localStorage.getItem("salesList")) || [];
+
+    if (editIndex === -1) {
+        salesList.push(salesData); // Add new sale
+        alert("✅ Sale added successfully!");
+    } else {
+        salesList[editIndex] = salesData; // Update existing sale
+        editIndex = -1;
+        document.getElementById('addSaleBtn').textContent = "Add Sale";
+        alert("✅ Sale updated successfully!");
+    }
+
+    localStorage.setItem("salesList", JSON.stringify(salesList));
+    displaySales();
+    clearInputs();
+}
+
+
+
+function editSale(index) {
+    let salesList = JSON.parse(localStorage.getItem("salesList")) || [];
+    let sale = salesList[index];
+
+    document.getElementById('invoice').value = sale.invoice;
+    document.getElementById('date').value = sale.date;
+    document.getElementById('customer').value = sale.customer;
+    document.getElementById('particulars').value = sale.particulars;
+    document.getElementById('sales').value = sale.sales;
+    document.getElementById('services').value = sale.services;
+    document.getElementById('total').value = sale.total;
+    document.getElementById('payment').value = sale.payment;
+    document.getElementById('remarks').value = sale.remarks;
+
+    editIndex = index;
+    document.getElementById('addSaleBtn').textContent = "Update Sale";
+
+    calculateTotal();
+}
+
+function deleteSale(index) {
+    let salesList = JSON.parse(localStorage.getItem("salesList")) || [];
+    salesList.splice(index, 1); // Remove the selected sale
+    localStorage.setItem("salesList", JSON.stringify(salesList)); // Update local storage
+    displaySales(); // Refresh the displayed table
+}
+
+function displaySales() {
+    let salesContainer = document.getElementById("salesContainer");
+    salesContainer.innerHTML = "";
+    let salesList = JSON.parse(localStorage.getItem("salesList")) || [];
+
+    // Group sales by date
+    let salesByDate = {};
+    salesList.forEach(sale => {
+        if (!salesByDate[sale.date]) {
+            salesByDate[sale.date] = [];
+        }
+        salesByDate[sale.date].push(sale);
+    });
+
+    for (let date in salesByDate) {
+    let formattedDate = formatDate(date); // Convert date format
+    let sales = salesByDate[date];
+
+    let cashTotal = 0, gcashTotal = 0, dailyTotal = 0;
+    let tableHTML = `
+        <h2>${formattedDate}</h2>
+        <table border="1">
+            <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Particulars</th>
+                <th>Sales</th>
+                <th>Services</th>
+                <th>Total</th>
+                <th>Payment</th>
+                <th>Remarks</th>
+                <th>Actions</th>
+            </tr>`;
+
+    sales.forEach((sale, index) => {
+        tableHTML += `
+            <tr>
+                <td>${sale.invoice}</td>
+                <td>${sale.customer}</td>
+                <td>${sale.particulars}</td>
+                <td>${sale.sales ? formatCurrency(sale.sales) : ""}</td>
+                <td>${sale.services ? formatCurrency(sale.services) : ""}</td>
+                <td>${sale.total ? formatCurrency(sale.total) : ""}</td>
+                <td>${sale.payment}</td>
+                <td>${sale.remarks}</td>
+                <td>
+                    <button class="action-btn edit-btn" onclick="editSale(${index})">Edit</button>
+                    <button class="action-btn delete-btn" onclick="deleteSale(${index})">Delete</button>
+                </td>
+            </tr>`;
+
+        dailyTotal += parseFloat(sale.total);
+        if (sale.payment === "Cash") cashTotal += parseFloat(sale.total);
+        else if (sale.payment === "Gcash") gcashTotal += parseFloat(sale.total);
+    });
+
+    tableHTML += `
+        </table>
+        <p><strong>Cash:</strong> ${formatCurrency(cashTotal)}</p>
+        <p><strong>Gcash:</strong> ${formatCurrency(gcashTotal)}</p>
+        <p><strong>Daily Total:</strong> ${formatCurrency(dailyTotal)}</p>
+        <hr>`;
+
+    salesContainer.innerHTML += tableHTML;
+}
+
+}
+
+
+function clearInputs() {
+    document.getElementById('invoice').value = "";
+    document.getElementById('date').value = "";
+    document.getElementById('customer').value = "";
+    document.getElementById('particulars').value = "";
+    document.getElementById('sales').value = "";
+    document.getElementById('services').value = "";
+    document.getElementById('total').value = "";
+    document.getElementById('payment').value = "";
+    document.getElementById('remarks').value = "";
+
+    document.getElementById('sales').disabled = false;
+    document.getElementById('services').disabled = false;
+}
+
+function loadSalesData() {
+    displaySales();
+}
+
+function exportToCSV() {
+        let invoice = document.getElementById("invoice").value;
+        let date = document.getElementById("date").value;
+        let customer = document.getElementById("customer").value;
+        let particulars = document.getElementById("particulars").value;
+        let sales = document.getElementById("sales").value || "0";
+        let services = document.getElementById("services").value || "0";
+        let total = document.getElementById("total").value || "₱0.00";
+        let payment = document.getElementById("payment").value;
+        let remarks = document.getElementById("remarks").value;
+
+        let csvContent = "Invoice,Date,Customer,Particulars,Sales,Services,Total,Payment,Remarks\n";
+        csvContent += `"${invoice}","${date}","${customer}","${particulars}","${sales}","${services}","${total}","${payment}","${remarks}"\n`;
+
+        let blob = new Blob([csvContent], { type: "text/csv" });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "sales_data.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    </script>
+</body>
+</html>
