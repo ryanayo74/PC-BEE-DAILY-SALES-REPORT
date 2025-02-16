@@ -117,6 +117,34 @@ function formatCurrency(amount) {
     return '₱' + parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
 }
 
+
+function exportToCSV() {
+    let salesList = JSON.parse(localStorage.getItem("salesList")) || [];
+
+    // If there are no sales, alert the user
+    if (salesList.length === 0) {
+        alert("⚠️ No sales data available to export.");
+        return;
+    }
+
+    // Prepare CSV content
+    let csvContent = "Invoice,Date,Customer,Particulars,Sales,Services,Total,Payment,Remarks\n";
+    
+    salesList.forEach(sale => {
+        csvContent += `"${sale.invoice}","${sale.date}","${sale.customer}","${sale.particulars}","${sale.sales}","${sale.services}","${sale.total}","${sale.payment}","${sale.remarks}"\n`;
+    });
+
+    // Create a blob and download the CSV file
+    let blob = new Blob([csvContent], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "sales_data.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+        
 document.getElementById("date").addEventListener("focus", function() {
         this.showPicker();
     });
